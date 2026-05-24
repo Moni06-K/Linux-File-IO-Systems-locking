@@ -19,145 +19,114 @@ Execute the C Program for the desired output.
 
 # PROGRAM:
 
-## 1. To Write a C program that illustrates files copying 
+## 1.To Write a C program that illustrates files copying 
+```
 
-``` bash
-#include <unistd.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+#define BUFFER_SIZE 1024
 
 int main(int argc, char *argv[]) {
+
     if (argc != 3) {
-        fprintf(stderr, "Usage: %s <source_file> <destination_file>\n", argv[0]);
-        exit(EXIT_FAILURE);
+        printf("Usage: %s <source_file> <destination_file>\n", argv[0]);
+        exit(1);
     }
 
-    char block[1024];
-    int in, out;
-    ssize_t nread;
+    int src, dest;
+    char buffer[BUFFER_SIZE];
+    int bytes_read;
 
-    // Open source file
-    in = open(argv[1], O_RDONLY);
-    if (in == -1) {
+    // Open source file (read only)
+    src = open(argv[1], O_RDONLY);
+    if (src < 0) {
         perror("Error opening source file");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
 
-    // Open destination file
-    out = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-    if (out == -1) {
+    // Open destination file (create if not exists)
+    dest = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (dest < 0) {
         perror("Error opening destination file");
-        close(in);
-        exit(EXIT_FAILURE);
+        close(src);
+        exit(1);
     }
 
-    // Copy contents
-    while ((nread = read(in, block, sizeof(block))) > 0) {
-        if (write(out, block, nread) != nread) {
-            perror("Error writing to destination file");
-            close(in);
-            close(out);
-            exit(EXIT_FAILURE);
-        }
+    // Copy data
+    while ((bytes_read = read(src, buffer, BUFFER_SIZE)) > 0) {
+        write(dest, buffer, bytes_read);
     }
 
-    if (nread == -1) {
-        perror("Error reading source file");
-    }
+    printf("File copied successfully.\n");
 
-    close(in);
-    close(out);
-    return EXIT_SUCCESS;
+    close(src);
+    close(dest);
+
+    return 0;
 }
-
 ```
 
 
 
 
 
-## 2. To Write a C program that illustrates files locking
 
-``` bash
-#include <fcntl.h>
+## 2.To Write a C program that illustrates files locking
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/file.h>
+#include <fcntl.h>
 
-void display_lslocks() {
-    printf("\nCurrent `lslocks` output:\n");
-    fflush(stdout);
-    system("lslocks");
-}
-
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
-    char *file = argv[1];
+int main() {
     int fd;
+    struct flock lock;
 
-    printf("Opening %s\n", file);
-
-    fd = open(file, O_WRONLY);
-    if (fd == -1) {
-        perror("Error opening file");
-        exit(EXIT_FAILURE);
+    fd = open("lockfile.txt", O_RDWR | O_CREAT, 0666);
+    if (fd < 0) {
+        perror("Open failed");
+        exit(1);
     }
 
-    // Acquire shared lock
-    if (flock(fd, LOCK_SH) == -1) {
-        perror("Error acquiring shared lock");
+    // Initialize lock structure
+    lock.l_type = F_WRLCK;     // Write lock
+    lock.l_whence = SEEK_SET;  // From beginning
+    lock.l_start = 0;          // Start offset
+    lock.l_len = 0;            // Lock whole file
+
+    printf("Trying to acquire lock...\n");
+
+    // Apply lock
+    if (fcntl(fd, F_SETLKW, &lock) == -1) {
+        perror("Lock failed");
         close(fd);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
-    printf("Acquired shared lock using flock\n");
-    display_lslocks();
 
-    sleep(1); // Simulate waiting before upgrading
-
-    // Try to upgrade to exclusive lock (non-blocking)
-    if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
-        perror("Error upgrading to exclusive lock");
-        flock(fd, LOCK_UN); // Release shared lock if upgrade fails
-        close(fd);
-        exit(EXIT_FAILURE);
-    }
-    printf("Acquired exclusive lock using flock\n");
-    display_lslocks();
-
-    sleep(1); // Simulate waiting before unlocking
+    printf("Lock acquired. Press Enter to release lock...\n");
+    getchar();
 
     // Release lock
-    if (flock(fd, LOCK_UN) == -1) {
-        perror("Error unlocking");
-        close(fd);
-        exit(EXIT_FAILURE);
-    }
-    printf("Unlocked\n");
-    display_lslocks();
+    lock.l_type = F_UNLCK;
+    fcntl(fd, F_SETLK, &lock);
+
+    printf("Lock released.\n");
 
     close(fd);
+
     return 0;
 }
 
-```
-
 
 ## OUTPUT
-*  __Output that illustrates files copying__
-    <img width="705" height="105" alt="image" src="https://github.com/user-attachments/assets/08d5c746-31de-4623-9165-ad99dc512810" />
+![Output](image/copy.png)
+![Output](image/lock.png)
 
-* __Output that illustrates files locking__
 
-    <img width="1203" height="463" alt="image" src="https://github.com/user-attachments/assets/bfde3fa6-b877-45f0-a216-6ba04796dd3c" />
 
-    <img width="1182" height="641" alt="image" src="https://github.com/user-attachments/assets/0b7fd3a1-2be1-4323-9847-624c2621d79f" />
 
 # RESULT:
 The programs are executed successfully.
