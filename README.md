@@ -20,112 +20,115 @@ Execute the C Program for the desired output.
 # PROGRAM:
 
 ## 1.To Write a C program that illustrates files copying 
-```
 
+echo "Hello Rakesh" > source.txt
+
+nano copy.c
+```
 #include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <stdlib.h>
 
-#define BUFFER_SIZE 1024
-
-int main(int argc, char *argv[]) {
-
-    if (argc != 3) {
-        printf("Usage: %s <source_file> <destination_file>\n", argv[0]);
-        exit(1);
+int main() {
+    FILE *source, *dest;
+    char ch;
+    
+    source = fopen("source.txt", "r");
+    if(source == NULL) {
+        printf("Source file not found!\n");
+        return 1;
     }
-
-    int src, dest;
-    char buffer[BUFFER_SIZE];
-    int bytes_read;
-
-    // Open source file (read only)
-    src = open(argv[1], O_RDONLY);
-    if (src < 0) {
-        perror("Error opening source file");
-        exit(1);
+    
+    dest = fopen("destination.txt", "w");
+    if(dest == NULL) {
+        printf("Cannot create destination file!\n");
+        fclose(source);
+        return 1;
     }
-
-    // Open destination file (create if not exists)
-    dest = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (dest < 0) {
-        perror("Error opening destination file");
-        close(src);
-        exit(1);
+    
+    while((ch = fgetc(source)) != EOF) {
+        fputc(ch, dest);
     }
-
-    // Copy data
-    while ((bytes_read = read(src, buffer, BUFFER_SIZE)) > 0) {
-        write(dest, buffer, bytes_read);
-    }
-
-    printf("File copied successfully.\n");
-
-    close(src);
-    close(dest);
-
+    
+    printf("File copied successfully!\n");
+    
+    fclose(source);
+    fclose(dest);
     return 0;
 }
 ```
+gcc copy.c -o copy
 
+./copy
 
+cat destination.txt
 
+## OUTPUT
+![Alt text](destination.png)
 
 
 
 ## 2.To Write a C program that illustrates files locking
 
+
+nano lock.c
+```
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
 
 int main() {
     int fd;
     struct flock lock;
-
-    fd = open("lockfile.txt", O_RDWR | O_CREAT, 0666);
-    if (fd < 0) {
-        perror("Open failed");
-        exit(1);
+    
+    fd = open("locked.txt", O_RDWR | O_CREAT, 0644);
+    if(fd < 0) {
+        printf("Error opening file!\n");
+        return 1;
     }
-
-    // Initialize lock structure
-    lock.l_type = F_WRLCK;     // Write lock
-    lock.l_whence = SEEK_SET;  // From beginning
-    lock.l_start = 0;          // Start offset
-    lock.l_len = 0;            // Lock whole file
-
-    printf("Trying to acquire lock...\n");
-
-    // Apply lock
-    if (fcntl(fd, F_SETLKW, &lock) == -1) {
-        perror("Lock failed");
+    
+    // Set write lock
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;
+    lock.l_pid = getpid();
+    
+    printf("Locking file...\n");
+    if(fcntl(fd, F_SETLK, &lock) == -1) {
+        printf("File already locked by another process!\n");
         close(fd);
-        exit(1);
+        return 1;
     }
-
-    printf("Lock acquired. Press Enter to release lock...\n");
+    printf("File locked successfully!\n");
+    
+    // Write to file
+    write(fd, "This is locked content", 23);
+    printf("Data written to file\n");
+    
+    printf("Press Enter to unlock...");
     getchar();
-
-    // Release lock
+    
+    // Unlock
     lock.l_type = F_UNLCK;
     fcntl(fd, F_SETLK, &lock);
-
-    printf("Lock released.\n");
-
+    printf("File unlocked!\n");
+    
     close(fd);
-
     return 0;
 }
+```
+gcc lock.c -o lock
 
+./lock
+
+cat locked.txt
 
 ## OUTPUT
-![Output](image/copy.png)
-![Output](image/lock.png)
 
 
+![Alt text](lock.png)
 
 
 # RESULT:
